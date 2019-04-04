@@ -18,12 +18,6 @@ import pika
 
 client = MongoClient('mongodb://root_DB:cjdk69RvQy5b5VDL@159.203.191.182:5009/DelivX')
 db = client.DelivX
-
-credentials = pika.PlainCredentials('admin', 'cw4NNFd3nhKgcUBe')
-parameters = pika.ConnectionParameters('18.228.179.231', 5672, '/', credentials, socket_timeout=300)
-connection = pika.BlockingConnection(parameters)
-channel = connection.channel()
-channel.queue_declare(queue='PushNotifictionSend')
 url = 'https://fcm.googleapis.com/fcm/send'
 
 
@@ -54,41 +48,58 @@ class PushNotification(APIView):
                    2 > RIACH Notification
         knowMoreUrl = CallBack Url
         userType = 1 for user, 2 for driver
-        type = 1 for city, 2 for zone, 3 for the Cordinates(By addrss)
+        type = 0 for individual, 1 for city, 2 for zone, 3 for the Cordinates(By addrss)
     '''
     def post(self, request):
+        credentials = pika.PlainCredentials('admin', 'cw4NNFd3nhKgcUBe')
+        parameters = pika.ConnectionParameters('18.228.179.231', 5672, '/', credentials, socket_timeout=300)
+        connection = pika.BlockingConnection(parameters)
+        channel = connection.channel()
+        channel.queue_declare(queue='PushNotifictionSend')
         data = request.data
+        print(data)
         data_type = data['type']
         data_body = data['body']
         data_title = data['title']
-        cityId = data['cityId']
-        zoneId = data['zoneId']
+        topics = data['topics']
+        topics = topics.split(",")
         image_url = data['imageUrl']
-        push_type = data['pusyType']
+        push_type = data['pusyType'] if 'pusyType' in data else 1
         user_type = data['userType']
         know_more_url = data['knowMoreUrl']
-        longitude = data['longitude']
-        latitude = data['latitude']
+        longitude = float(data['longitude']) if data['longitude'] != "" else 0
+        latitude = float(data['latitude']) if 'latitude' in data else 0
         dispatchRadius = data['radius']
         if data_type != 3:
-            if len(zoneId) == 0 and len(cityId)!= 0: # get the city data
+            if int(data_type) == 1:
+                for i in topics:
+                    aggregateobj = [
+                        {
+                            '$match':
+                                {
+                                    'pushToken': i
+                                }
+                        }
+                    ]
+
+            elif int(data_type) == 2: # get the city data
                 aggregateobj = [
                     {
                         '$match':
                             {
                                 'cityId': {
-                                    '$in': cityId
+                                    '$in': topics
                                 },
                             }
                     }
                 ]
-            elif len(cityId) == 0 and len(zoneId) != 0: # get the Zone data when the city is blank
+            elif int(data_type) == 3: # get the Zone data when the city is blank
                 aggregateobj = [
                     {
                         '$match':
                             {
                                 'zones': {
-                                    '$in': zoneId
+                                    '$in': topics
                                 }
                             }
                     }
@@ -125,7 +136,8 @@ class PushNotification(APIView):
                 }
 
             ]
-        print(aggregateobj)
+        print('=====================',aggregateobj)
+        print(user_type)
         if int(user_type) == 1:
             response_data = db.customer.aggregate(aggregateobj)
         elif int(user_type) == 2:
@@ -133,7 +145,6 @@ class PushNotification(APIView):
 
         uniqId = str(ObjectId()) # generate the objectid or the mongo id from here
         for i in response_data:
-            print("-----------------", i['fcmTopic'])
             if 'fcmTopic' in i:
                 if i['fcmTopic'] == None or i['fcmTopic'] == "":
                     pass
@@ -191,7 +202,62 @@ class PushNotification(APIView):
                                           body=json.dumps(body))
 
             else:
-                pass
+                if 'pushToken' in i:
+                    fcm_token = i['pushToken']
+                    if int(push_type) == 1:
+                        body = {
+                            "notification": {
+                                "title": data_title,
+                                "body": data_body,
+                                "sound": "default",
+                            },
+                            "data": {
+                                "title": data_title,
+                                "body": data_body,
+                            },
+                            "collapse_key": 'your_collapse_key',
+                            "priority": 'high',
+                            "delay_while_idle": True,
+                            "dry_run": False,
+                            "time_to_live": 3600,
+                            "badge": "1",
+                            "extra": {
+                                "uniqId": uniqId,
+                                "deviceType": i['mobileDevices']['deviceType'] if 'mobileDevices' in i else 0,
+                                "pushType": push_type,
+                                "knowMoreUrl": know_more_url,
+                                "topic": str(i['pushToken']),
+                                "imageurl": image_url,
+                                "userId": str(i['_id']),
+                                "userName": i['firstName'] + " " + i['lastName'],
+                                "userType": "Driver"
+                            },
+                            "to": "/topics/" + str(i['pushToken'])
+                        }
+                    elif int(push_type) == 2:
+                        body = {
+                            "notification": {
+                                "title": data_title,
+                                "body": data_body,
+                                "sound": "default",
+                                'media_url': image_url,
+                                "content_available": True,
+                                'isMediaType': True
+                            },
+                            "collapse_key": 'your_collapse_key',
+                            "priority": 'high',
+                            "delay_while_idle": True,
+                            "dry_run": False,
+                            "time_to_live": 3600,
+                            "badge": "1",
+                            "to": "/topics/" + str(i['pushToken'])
+                        }
+                    print(body)
+                    channel.basic_publish(exchange='', routing_key='PushNotifictionSend',
+                                          body=json.dumps(body))
+                else:
+                    pass
+        connection.close()
         message = {
             "message": "Data In Processing"
         }

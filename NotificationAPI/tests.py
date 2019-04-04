@@ -1,5 +1,5 @@
-from geopy.geocoders import Nominatim
-geolocator = Nominatim(user_agent="specify_your_app_name_here")
-location = geolocator.geocode("3Embed Software Technologies Pvt. Ltd")
-print(location.address)
-print((location.latitude, location.longitude))
+# topics =  '5bb34582f801687346088aeb,5bb345d6f801687238540c31'
+# topics = topics.split(",")
+# for i in topics:
+#     print(i)
+print(float('00.00'))

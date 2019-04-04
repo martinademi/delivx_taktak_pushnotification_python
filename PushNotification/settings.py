@@ -37,21 +37,26 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'corsheaders',
     'NotificationAPI'
 )
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-)
+]
 
 ROOT_URLCONF = 'PushNotification.urls'
+
+CORS_ORIGIN_ALLOW_ALL = True
+
 
 TEMPLATES = [
     {
@@ -71,6 +76,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'PushNotification.wsgi.application'
 
+
+X_FRAME_OPTIONS = 'ALLOW-FROM https://superadmin.deliv-x.com'
 
 # Database
 # https://docs.djangoproject.com/en/1.8/ref/settings/#databases

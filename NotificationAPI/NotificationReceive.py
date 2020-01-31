@@ -6,19 +6,31 @@ from pymongo import MongoClient, CursorType
 import json
 import requests
 import ast
+import os
+from dotenv import load_dotenv, find_dotenv
 
-client = MongoClient('mongodb://root_DB:cjdk69RvQy5b5VDL@159.203.191.182:5009/DelivX')
-db = client.DelivX
+load_dotenv(dotenv_path="/usr/etc/.env")
 
-credentials = pika.PlainCredentials('admin', 'cw4NNFd3nhKgcUBe')
-parameters = pika.ConnectionParameters('18.228.179.231', 5672, '/', credentials, socket_timeout=300)
+mongo_url = os.getenv("MONGO_URL")
+mongo_db = os.getenv("MONGO_DATABASE")
+server_key = os.getenv("SERVER_KEY")
+rabbitHost = os.getenv("RABBITMQ_HOST")
+rabbitUser = os.getenv("RABBITMQ_USER")
+rabbitPass = os.getenv("RABBITMQ_PASS")
+
+client = MongoClient(mongo_url)
+db = client[str(mongo_db)]
+
+credentials = pika.PlainCredentials(rabbitUser, rabbitPass)
+parameters = pika.ConnectionParameters(rabbitHost, 5672, '/', credentials, socket_timeout=300)
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 channel.queue_declare(queue='PushNotifictionSend')
 url = 'https://fcm.googleapis.com/fcm/send'
 
-headers = {"Content-Type":"application/json",
-        "Authorization": "key=AAAARNrad8o:APA91bHkxG8dPMF-thCRkh_nZzCu9JDfEjvsQjuD7woRFtYBTM-RI7xrcq2bwW1RUv9jIIolZyPTRh2b9Rbe48jmDpd7yndpgkNvZqzkIAvddC027VdzmhMdDLvZPMsaEzRTztbSMO3z"}
+server_key = "key={}".format(server_key)
+headers = {"Content-Type": "application/json",
+           "Authorization": server_key}
 
 def callback(ch, method, properties, body):
     body = body.decode("utf-8")

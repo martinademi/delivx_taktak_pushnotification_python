@@ -20,21 +20,22 @@ load_dotenv(dotenv_path="/usr/etc/.env")
 
 mongo_url = os.getenv("MONGO_URL")
 mongo_db = os.getenv("MONGO_DATABASE")
-rabbit_host = os.getenv("RABBIT_HOST")
-rabbit_user = os.getenv("RABBIT_USER")
-rabbit_pass = os.getenv("RABBIT_PASS")
-rabbit_queue = os.getenv("RABBIT_QUEUE")
-server_key = os.getenv("SERVER_KEY")
+server_key = os.getenv("FCM_SERVER_KEY")
 
 client = MongoClient(mongo_url)
 db = client[str(mongo_db)]
+
+rabbit_host = os.getenv("RABBIT_HOST")
+rabbit_user = os.getenv("RABBIT_USER")
+rabbit_pass = os.getenv("RABBIT_PASS")
+rabbit_queue = "PushNotifictionSendPython"
 
 print(db, rabbit_host, rabbit_user, rabbit_pass, rabbit_queue, server_key)
 
 url = 'https://fcm.googleapis.com/fcm/send'
 
 headers = {"Content-Type": "application/json",
-           "Authorization": server_key}
+           "Authorization": "key="+str(server_key)}
 
 
 class PushNotification(APIView):
@@ -93,26 +94,34 @@ class PushNotification(APIView):
                 pushmsg = "Radius"
             if int(data_type) != 6:
                 if int(data_type) == 1:
-                    for i in topics:
-                        if int(user_type) == 1:
-                            aggregateobj = [
-                                {
-                                    '$match':
-                                        {
-                                            'fcmTopic': i
+                    if int(user_type) == 1:
+                        aggregateobj = [
+                            {
+                                '$match':
+                                    {
+                                        'fcmTopic':  {
+                                            "$in": topics
                                         }
-                                }
-                            ]
-                        elif int(user_type) == 2:
-                            aggregateobj = [
-                                {
-                                    '$match':
-                                        {
-                                            'pushToken': i
+                                    }
+                            }
+                        ]
+                    elif int(user_type) == 2:
+                        aggregateobj = [
+                            {
+                                '$match':
+                                    {
+                                        'pushToken':  {
+                                            "$in": topics
                                         }
-                                }
-                            ]
+                                    }
+                            }
+                        ]
                 elif int(data_type) == 2 or int(data_type) == 3:  # get the city data
+                    if int(user_type) == 1:
+                        strTopics = topics
+                        topics  = [ObjectId(i) for i in topics]
+                        topics += strTopics 
+                    # print("city : ",topics)
                     aggregateobj = [
                         {
                             '$match':
@@ -137,8 +146,8 @@ class PushNotification(APIView):
                 else:  # when the cityid and zone id both are not blank
                     aggregateobj = [
                         {
-                            '$match': {
-                                "status": 0
+                            '$match':{
+                                "guestToken": False
                             }
                         }
                     ]
@@ -185,7 +194,7 @@ class PushNotification(APIView):
                         print("fcmtopic is none")
                         pass
                     else:
-                        print("correct fcm topic")
+                        # print("correct fcm topic")
                         fcm_token = i['fcmTopic']
                         print(i['fcmTopic'])
                         if int(push_type) == 1:
@@ -261,7 +270,7 @@ class PushNotification(APIView):
                             print('OK')
                         else:
                             print("Not OK")
-                        print("Body: ", body)
+                        # print("Body: ", body)
                         channel.basic_publish(exchange='', routing_key=rabbit_queue,
                                             body=json.dumps(body))
 
@@ -343,7 +352,7 @@ class PushNotification(APIView):
                             }
                         if connection.is_open:
                             print('OK')
-                        print("Body: ", body)   
+                        # print("Body: ", body)   
                         channel.basic_publish(exchange='', routing_key=rabbit_queue,
                                             body=json.dumps(body))
                     else:

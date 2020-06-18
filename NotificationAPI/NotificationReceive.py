@@ -12,6 +12,7 @@ load_dotenv(dotenv_path="/usr/etc/.env")
 
 mongo_url = os.getenv("MONGO_URL")
 mongo_db = os.getenv("MONGO_DATABASE")
+server_key = os.getenv("FCM_SERVER_KEY")
 
 client = MongoClient(mongo_url)
 db = client[str(mongo_db)]
@@ -19,20 +20,20 @@ db = client[str(mongo_db)]
 rabbit_host = os.getenv("RABBIT_HOST")
 rabbit_user = os.getenv("RABBIT_USER")
 rabbit_pass = os.getenv("RABBIT_PASS")
-rabbit_queue = os.getenv("RABBIT_QUEUE")
-server_key = os.getenv("SERVER_KEY")
+rabbit_queue = "PushNotifictionSendPython"
 
 print(db, rabbit_host, rabbit_user, rabbit_pass, rabbit_queue, server_key)
+
+url = 'https://fcm.googleapis.com/fcm/send'
+
+headers = {"Content-Type": "application/json",
+           "Authorization": "key="+str(server_key)}
 
 credentials = pika.PlainCredentials(rabbit_user, rabbit_pass)
 parameters = pika.ConnectionParameters(rabbit_host, 5672, '/', credentials, socket_timeout=300)
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 channel.queue_declare(queue=rabbit_queue)
-url = 'https://fcm.googleapis.com/fcm/send'
-
-headers = {"Content-Type": "application/json",
-           "Authorization": server_key}
 
 def callback(ch, method, properties, body):
     body = body.decode("utf-8")
@@ -146,7 +147,6 @@ def callback(ch, method, properties, body):
         print("update")
 
 
-channel.basic_consume(callback, queue=rabbit_queue, no_ack=True)
+channel.basic_consume(rabbit_queue, callback, auto_ack=True)
 channel.start_consuming()
-
 

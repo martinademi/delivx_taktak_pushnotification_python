@@ -7,7 +7,7 @@ djangorestframework==3.11.0
 geographiclib==1.49
 geopy==1.18.1
 idna==2.8
-pika==0.13.0
+pika
 pyfcm==1.4.5
 pymongo==3.7.2
 python-dateutil==2.8.0

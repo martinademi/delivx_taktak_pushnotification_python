@@ -149,4 +149,4 @@ def callback(ch, method, properties, body):
 
 channel.basic_consume(rabbit_queue, callback, auto_ack=True)
 channel.start_consuming()
-
+connection.close()

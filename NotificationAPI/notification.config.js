@@ -6,6 +6,6 @@ module.exports = {
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
-    interpreter:'/opt/pythonApi/venv/bin/python3'
+    interpreter:'/opt/pythonAPI/venv/bin/python3'
   }]
 };
